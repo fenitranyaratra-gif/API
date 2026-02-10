@@ -119,7 +119,6 @@ def create_panne_statut():
     if r.status_code not in (200, 201):
         return jsonify({"error": "Impossible de créer le statut", "code": r.status_code}), 500
     return jsonify(r.json())
-
 @app.route("/pannes/<string:id_panne>/details")
 def get_panne_details_by_panne(id_panne):
 
@@ -143,28 +142,6 @@ def get_panne_details_by_panne(id_panne):
 
     return jsonify(r.json())
 
-@app.route("/pannes/<string:id_panne>/details")
-def get_panne_details_by_panne(id_panne):
-
-    query = {
-        "structuredQuery": {
-            "from": [{"collectionId": "panneDetails"}],
-            "where": {
-                "fieldFilter": {
-                    "field": {"fieldPath": "idPanne"},
-                    "op": "EQUAL",
-                    "value": {"stringValue": id_panne}
-                }
-            }
-        }
-    }
-
-    r = requests.post(f"{FIRESTORE_BASE}:runQuery", json=query)
-
-    if r.status_code != 200:
-        return jsonify({"error": r.text}), r.status_code
-
-    return jsonify(r.json())
 
 @app.route("/pannes/<string:panne_id>/paiement")
 def get_paiement_panne(panne_id):
