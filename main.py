@@ -192,4 +192,41 @@ def get_paiement_panne(panne_id):
 
 if __name__ == "__main__":
     app.run(debug=True)
-    
+
+
+@app.route("/pannes/<string:id_panne>/statut", methods=["POST"])
+def creer_statut_panne(id_panne):
+    """
+    Crée un nouveau statut pour une panne dans Firestore.
+    On insère uniquement idPanne et idStatutForPanne=2, avec dateHeure automatique.
+    """
+    # Préparer le document Firestore
+    new_doc = {
+        "fields": {
+            "idPanne": {"stringValue": id_panne},
+            "idStatutForPanne": {"stringValue": "2"},
+            "dateHeure": {"timestampValue": datetime.utcnow().isoformat() + "Z"}
+        }
+    }
+
+    url = f"{FIRESTORE_BASE}/panneStatuts"
+    headers = {"Content-Type": "application/json"}
+
+    try:
+        r = requests.post(url, json=new_doc, headers=headers, timeout=10)
+    except requests.RequestException as e:
+        return jsonify({"error": "Erreur lors de la requête Firestore", "message": str(e)}), 500
+
+    if r.status_code not in (200, 201):
+        return jsonify({
+            "error": "Impossible de créer le statut",
+            "code": r.status_code,
+            "message": r.text
+        }), 500
+
+    return jsonify({
+        "message": "Statut créé avec succès",
+        "idPanne": id_panne,
+        "idStatutForPanne": "2",
+        "dateHeure": datetime.utcnow().isoformat() + "Z"
+    }), 201
