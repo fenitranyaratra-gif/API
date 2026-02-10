@@ -18,6 +18,25 @@ def get_voitures():
     if r.status_code != 200:
         return jsonify({"error": "Impossible de récupérer les données", "code": r.status_code}), 500
     return jsonify(r.json())
+    
+@app.route("/voitures/<string:id_voiture>/pannes")
+def get_pannes_by_voiture(id_voiture):
+
+    query = {
+        "structuredQuery": {
+            "from": [{"collectionId": "pannes"}],
+            "where": {
+                "fieldFilter": {
+                    "field": {"fieldPath": "idVoiture"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": id_voiture}
+                }
+            }
+        }
+    }
+
+    r = requests.post(f"{FIRESTORE_BASE}:runQuery", json=query)
+    return jsonify(r.json()), r.status_code
 
 # ----------------------------
 # POST /pannes  -> filtrer par idVoiture
