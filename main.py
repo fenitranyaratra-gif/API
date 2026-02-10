@@ -257,6 +257,67 @@ def creer_statut_panne(id_panne):
         "dateHeure": datetime.utcnow().isoformat() + "Z"
     }), 201
 
-
+@app.route("/pannes/<string:id_panne>/est-reparee", methods=["GET"])
+def est_panne_reparée(id_panne):
+    """
+    Vérifie si une panne est déjà réparée (statut 2 ou 3).
+    Renvoie true si la panne a le statut 2 ou 3, false sinon.
+    """
+    # Vérifier d'abord si la panne est payée (statut 3)
+    query_paiement = {
+        "structuredQuery": {
+            "from": [{"collectionId": "paiementStatuts"}],
+            "where": {
+                "fieldFilter": {
+                    "field": {"fieldPath": "idPanne"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": id_panne}
+                }
+            },
+            "orderBy": [{"field": {"fieldPath": "dateHeure"}, "direction": "DESCENDING"}],
+            "limit": 1
+        }
+    }
+    
+    r_paiement = requests.post(f"{FIRESTORE_BASE}:runQuery", json=query_paiement)
+    
+    if r_paiement.status_code == 200:
+        paiement_data = r_paiement.json()
+        documents_paiement = [d for d in paiement_data if "document" in d]
+        if documents_paiement:
+            fields = documents_paiement[0]["document"]["fields"]
+            statut_paiement = fields.get("idStatutForPaiement", {}).get("stringValue", "")
+            if statut_paiement == "3":
+                return jsonify({"est_reparée": True, "raison": "payée"}), 200
+    
+    # Vérifier si la panne a le statut 2 (réparée)
+    query_statut = {
+        "structuredQuery": {
+            "from": [{"collectionId": "panneStatuts"}],
+            "where": {
+                "fieldFilter": {
+                    "field": {"fieldPath": "idPanne"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": id_panne}
+                }
+            },
+            "orderBy": [{"field": {"fieldPath": "dateHeure"}, "direction": "DESCENDING"}],
+            "limit": 1
+        }
+    }
+    
+    r_statut = requests.post(f"{FIRESTORE_BASE}:runQuery", json=query_statut)
+    
+    if r_statut.status_code == 200:
+        statut_data = r_statut.json()
+        documents_statut = [d for d in statut_data if "document" in d]
+        if documents_statut:
+            fields = documents_statut[0]["document"]["fields"]
+            statut_panne = fields.get("idStatutForPanne", {}).get("stringValue", "")
+            if statut_panne == "2":
+                return jsonify({"est_reparée": True, "raison": "réparée"}), 200
+    
+    # Si aucun statut 2 ou 3 n'est trouvé
+    return jsonify({"est_reparée": False}), 200
 if __name__ == "__main__":
     app.run(debug=True)
