@@ -104,42 +104,48 @@ def create_panne_statut():
 if __name__ == "__main__":
     app.run(debug=True)
 
-
 @app.route("/pannes/<string:panne_id>/paiement")
 def get_paiement_panne(panne_id):
+
     query = {
         "structuredQuery": {
-            "from": [{"collectionId": "panneStatuts"}],
+            "from": [{"collectionId": "paiementStatuts"}],
             "where": {
-                "compoundFilter": {
-                    "op": "AND",
-                    "filters": [
-                        {
-                            "fieldFilter": {
-                                "field": {"fieldPath": "idPanne"},
-                                "op": "EQUAL",
-                                "value": {"stringValue": panne_id}
-                            }
-                        },
-                        {
-                            "fieldFilter": {
-                                "field": {"fieldPath": "idStatutForPaiement"},
-                                "op": "EQUAL",
-                                "value": {"stringValue": "3"}  # payé
-                            }
-                        }
-                    ]
+                "fieldFilter": {
+                    "field": {"fieldPath": "idPanne"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": panne_id}
                 }
             },
             "limit": 1
         }
     }
 
-    url = f"{FIRESTORE_BASE}:runQuery"
-
-    r = requests.post(url, json=query, timeout=10)
+    r = requests.post(f"{FIRESTORE_BASE}:runQuery", json=query)
 
     if r.status_code != 200:
-        return jsonify({"error": "Erreur Firestore"}), 500
+        return jsonify({
+            "paid": False,
+            "error": r.text
+        }), r.status_code
 
-    return jsonify(r.json())
+    data = r.json()
+
+    # Aucun paiement trouvé
+    if not data or "document" not in data[0]:
+        return jsonify({
+            "panneId": panne_id,
+            "paid": False
+        })
+
+    fields = data[0]["document"]["fields"]
+
+    # adapte le nom du champ si besoin
+    statut = fields.get("idStatutPaiement", {}).get("stringValue", "")
+
+    paid = statut == "3"
+
+    return jsonify({
+        "panneId": panne_id,
+        "paid": paid
+    })
