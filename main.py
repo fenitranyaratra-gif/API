@@ -103,3 +103,53 @@ def create_panne_statut():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+@app.route("/pannes/<string:panne_id>/paiement")
+def get_paiement_panne(panne_id):
+    """Vérifier si une panne a été payée"""
+    query = {
+        "structuredQuery": {
+            "from": [{"collectionId": "panneStatuts"}],
+            "where": {
+                "compoundFilter": {
+                    "op": "AND",
+                    "filters": [
+                        {
+                            "fieldFilter": {
+                                "field": {"fieldPath": "idPanne"},
+                                "op": "EQUAL",
+                                "value": {"stringValue": panne_id}
+                            }
+                        },
+                        {
+                            "fieldFilter": {
+                                "field": {"fieldPath": "idStatutForPaiement"},
+                                "op": "EQUAL",
+                                "value": {"stringValue": "3"}  # 3 = payé
+                            }
+                        }
+                    ]
+                }
+            },
+            "limit": 1
+        }
+    }
+    
+    url = f"{BASE_URL}:runQuery"
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Accept-Encoding': 'identity'
+    }
+    
+    r = requests.post(url, json=query, headers=headers, timeout=10)
+    
+    if r.status_code != 200:
+        return jsonify({
+            "error": {
+                "code": r.status_code,
+                "message": r.text[:200] if r.text else "Pas de réponse"
+            }
+        }), r.status_code
+    
+    return jsonify(r.json())
