@@ -190,8 +190,34 @@ def get_paiement_panne(panne_id):
         "paid": paid
     })
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route("/pannes/<string:id_panne>/statuts", methods=["GET"])
+def get_statuts_panne(id_panne):
+    """Récupère tous les statuts d'une panne spécifique."""
+    query = {
+        "structuredQuery": {
+            "from": [{"collectionId": "panneStatuts"}],
+            "where": {
+                "fieldFilter": {
+                    "field": {"fieldPath": "idPanne"},
+                    "op": "EQUAL",
+                    "value": {"stringValue": id_panne}
+                }
+            },
+            "orderBy": [{"field": {"fieldPath": "dateHeure"}, "direction": "DESCENDING"}],
+            "limit": 10
+        }
+    }
+    
+    url = f"{FIRESTORE_BASE}:runQuery"
+    try:
+        r = requests.post(url, json=query, timeout=10)
+    except requests.RequestException as e:
+        return jsonify({"error": "Erreur Firestore", "message": str(e)}), 500
+    
+    if r.status_code != 200:
+        return jsonify({"error": "Erreur Firestore", "code": r.status_code, "message": r.text}), 500
+    
+    return jsonify(r.json()), 200
 
 
 @app.route("/pannes/<string:id_panne>/statut", methods=["POST"])
@@ -230,3 +256,7 @@ def creer_statut_panne(id_panne):
         "idStatutForPanne": "2",
         "dateHeure": datetime.utcnow().isoformat() + "Z"
     }), 201
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
