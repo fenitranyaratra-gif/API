@@ -101,8 +101,6 @@ def create_panne_statut():
         return jsonify({"error": "Impossible de créer le statut", "code": r.status_code}), 500
     return jsonify(r.json())
 
-if __name__ == "__main__":
-    app.run(debug=True)
 
 @app.route("/pannes/<string:panne_id>/paiement")
 def get_paiement_panne(panne_id):
@@ -131,17 +129,18 @@ def get_paiement_panne(panne_id):
 
     data = r.json()
 
-    # Aucun paiement trouvé
-    if not data or "document" not in data[0]:
+    # Firestore peut renvoyer des objets vides → on filtre
+    documents = [d for d in data if "document" in d]
+
+    if not documents:
         return jsonify({
             "panneId": panne_id,
             "paid": False
         })
 
-    fields = data[0]["document"]["fields"]
+    fields = documents[0]["document"]["fields"]
 
-    # adapte le nom du champ si besoin
-    statut = fields.get("idStatutPaiement", {}).get("stringValue", "")
+    statut = fields.get("idStatutForPaiement", {}).get("stringValue", "")
 
     paid = statut == "3"
 
@@ -149,3 +148,7 @@ def get_paiement_panne(panne_id):
         "panneId": panne_id,
         "paid": paid
     })
+
+if __name__ == "__main__":
+    app.run(debug=True)
+    
